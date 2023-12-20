@@ -9,6 +9,7 @@ import {
   CurveFixture,
   KyberV3DMMFixture,
   SystemFixture,
+  SystemFixtureDeploy,
   UniswapFixture,
   YearnFixture,
   UniswapV3Fixture,
@@ -19,6 +20,7 @@ import { Blockchain, ProtocolUtils } from "../common";
 // Hardhat-Provider Aware Exports
 const provider = ethers.provider;
 export const getSystemFixture = (ownerAddress: Address) => new SystemFixture(provider, ownerAddress);
+export const getSystemFixtureDeploy = (ownerAddress: Address) => new SystemFixtureDeploy(provider, ownerAddress);
 export const getProtocolUtils = () => new ProtocolUtils(provider);
 export const getBlockchainUtils = () => new Blockchain(provider);
 export const getAaveV2Fixture = (ownerAdderss: Address) => new AaveV2Fixture(provider, ownerAdderss);

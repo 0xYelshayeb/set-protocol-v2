@@ -148,13 +148,13 @@ contract MultiSigOperator {
         emit SubmitRebalance(rebalanceNum, _newComponents, _newComponentsTargetUnits, _oldComponentsTargetUnits, _positionMultiplier);
     }
 
-    function confirmTransaction() public onlyOwner notExecuted() notConfirmed() {
+    function confirmRebalance() public onlyOwner notExecuted() notConfirmed() {
         currentRebalance.numConfirmations += 1;
         rebalanceConfirmed[msg.sender] = true;
         emit ConfirmRebalance(msg.sender, rebalanceNum);
     }
 
-    function executeTransaction() public onlyOwner notExecuted() {
+    function executeRebalance() public onlyOwner notExecuted() {
 
         require(
             currentRebalance.numConfirmations >= numConfirmationsRequired,

@@ -142,14 +142,14 @@ describe("MultiSigOperator", () => {
   });
 
 
-  describe("Transaction submission", () => {
-    it("should allow the operator to submit a transaction", async () => {
+  describe("Rebalance submission", () => {
+    it("should allow the operator to submit a Rebalance", async () => {
       MultiSigInstance = MultiSigInstance.connect(operator.wallet);
       const tx = await MultiSigInstance.submitRebalance(...mockR);
       await expect(tx).to.emit(MultiSigInstance, "SubmitRebalance");
     });
 
-    it("should not allow non-operators to submit a transaction", async () => {
+    it("should not allow non-operators to submit a Rebalance", async () => {
       MultiSigInstance = MultiSigInstance.connect(manager.wallet);
       await expect(
         MultiSigInstance.submitRebalance(...mockR)
@@ -157,81 +157,81 @@ describe("MultiSigOperator", () => {
     });
   });
 
-  describe("Transaction confirmation", () => {
+  describe("Rebalance confirmation", () => {
     beforeEach(async () => {
       MultiSigInstance = MultiSigInstance.connect(operator.wallet);
       await MultiSigInstance.submitRebalance(...mockR);
     });
 
-    it("should allow owners to confirm a transaction", async () => {
+    it("should allow owners to confirm a Rebalance", async () => {
       MultiSigInstance = MultiSigInstance.connect(ownerAccounts[0].wallet);
-      const tx = await MultiSigInstance.confirmTransaction();
+      const tx = await MultiSigInstance.confirmRebalance();
       await expect(tx).to.emit(MultiSigInstance, "ConfirmRebalance");
     });
 
-    it("should not allow non-owners to confirm a transaction", async () => {
+    it("should not allow non-owners to confirm a Rebalance", async () => {
       MultiSigInstance = MultiSigInstance.connect(manager.wallet); // user1 is not an owner
       await expect(
-        MultiSigInstance.confirmTransaction()
+        MultiSigInstance.confirmRebalance()
       ).to.be.revertedWith("not owner");
     });
 
-    it("should not allow confirming a transaction more than once by the same owner", async () => {
+    it("should not allow confirming a Rebalance more than once by the same owner", async () => {
       MultiSigInstance = MultiSigInstance.connect(ownerAccounts[0].wallet);
-      await MultiSigInstance.confirmTransaction();
+      await MultiSigInstance.confirmRebalance();
       await expect(
-        MultiSigInstance.confirmTransaction()
+        MultiSigInstance.confirmRebalance()
       ).to.be.revertedWith("rebalance already confirmed");
     });
 
-    it("should not allow confirming a transaction if already executed", async () => {
+    it("should not allow confirming a Rebalance if already executed", async () => {
       for (const account of ownerAccounts.slice(0, numConfirmationsRequired)) {
-        await MultiSigInstance.connect(account.wallet).confirmTransaction();
+        await MultiSigInstance.connect(account.wallet).confirmRebalance();
       }
-      await MultiSigInstance.connect(ownerAccounts[0].wallet).executeTransaction();
+      await MultiSigInstance.connect(ownerAccounts[0].wallet).executeRebalance();
       await expect(
-        MultiSigInstance.connect(ownerAccounts[0].wallet).confirmTransaction()
+        MultiSigInstance.connect(ownerAccounts[0].wallet).confirmRebalance()
       ).to.be.revertedWith("rebalance already executed");
     });
   });
 
-  describe("Transaction execution", () => {
+  describe("Rebalance execution", () => {
     beforeEach(async () => {
       MultiSigInstance = MultiSigInstance.connect(operator.wallet);
       await MultiSigInstance.submitRebalance(...mockR);
       // Add confirmations
       for (const account of ownerAccounts.slice(0, numConfirmationsRequired)) {
-        await MultiSigInstance.connect(account.wallet).confirmTransaction();
+        await MultiSigInstance.connect(account.wallet).confirmRebalance();
       }
     });
 
-    it("should execute a transaction when required confirmations are met", async () => {
-      const tx = await MultiSigInstance.connect(ownerAccounts[0].wallet).executeTransaction();
+    it("should execute a Rebalance when required confirmations are met", async () => {
+      const tx = await MultiSigInstance.connect(ownerAccounts[0].wallet).executeRebalance();
       await expect(tx).to.emit(MultiSigInstance, "ExecuteRebalance");
     });
 
-    it("should not execute a transaction when required confirmations are not met", async () => {
+    it("should not execute a Rebalance when required confirmations are not met", async () => {
       // Reset to a state where not enough confirmations are present
       MultiSigInstance = MultiSigInstance.connect(ownerAccounts[0].wallet);
       MultiSigInstance.revokeConfirmation();
       await expect(
-        MultiSigInstance.connect(ownerAccounts[0].wallet).executeTransaction()
+        MultiSigInstance.connect(ownerAccounts[0].wallet).executeRebalance()
       ).to.be.revertedWith("cannot execute rebalance");
     });
 
-    it("should not allow non-owners to execute a transaction", async () => {
+    it("should not allow non-owners to execute a Rebalance", async () => {
       MultiSigInstance = MultiSigInstance.connect(manager.wallet); // user1 is not an owner
       await expect(
-        MultiSigInstance.executeTransaction()
+        MultiSigInstance.executeRebalance()
       ).to.be.revertedWith("not owner");
     });
   });
 
-  describe("Transaction revocation", () => {
+  describe("Rebalance revocation", () => {
     beforeEach(async () => {
       MultiSigInstance = MultiSigInstance.connect(operator.wallet);
       await MultiSigInstance.submitRebalance(...mockR);
-      await MultiSigInstance.connect(ownerAccounts[0].wallet).confirmTransaction();
+      await MultiSigInstance.connect(ownerAccounts[0].wallet).confirmRebalance();
     });
 
     it("should allow owners to revoke their confirmation", async () => {
@@ -263,9 +263,9 @@ describe("MultiSigOperator", () => {
 
     it("should not allow revoking a confirmation if already executed", async () => {
       for (const account of ownerAccounts.slice(1, numConfirmationsRequired)) {
-        await MultiSigInstance.connect(account.wallet).confirmTransaction();
+        await MultiSigInstance.connect(account.wallet).confirmRebalance();
       }
-      await MultiSigInstance.connect(ownerAccounts[0].wallet).executeTransaction();
+      await MultiSigInstance.connect(ownerAccounts[0].wallet).executeRebalance();
       await expect(
         MultiSigInstance.connect(ownerAccounts[0].wallet).revokeConfirmation()
       ).to.be.revertedWith("rebalance already executed");

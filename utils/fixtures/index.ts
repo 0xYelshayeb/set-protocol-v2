@@ -4,6 +4,7 @@ export { CompoundFixture } from "./compoundFixture";
 export { CurveFixture } from "./curveFixture";
 export { KyberV3DMMFixture } from "./kyberV3DMMFixture";
 export { SystemFixture } from "./systemFixture";
+export { SystemFixtureDeploy } from "./systemFixtureDeploy";
 export { UniswapFixture } from "./uniswapFixture";
 export { UniswapV3Fixture } from "./uniswapV3Fixture";
 export { YearnFixture } from "./yearnFixture";

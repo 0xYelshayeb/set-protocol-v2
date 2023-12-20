@@ -3,7 +3,7 @@ pragma solidity ^0.6.10;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { ISetToken } from "../interfaces/ISetToken.sol";
-import { IIndexModule } from "../interfaces/IIndexModule.sol";
+import { IGeneralIndexModule } from "../interfaces/IGeneralIndexModule.sol";
 import { IStreamingFeeModule } from "../interfaces/IStreamingFeeModule.sol";
 import { MutualUpgrade } from "../lib/MutualUpgrade.sol";
 import { PreciseUnitMath } from "../lib/PreciseUnitMath.sol";
@@ -48,7 +48,7 @@ contract ICManager is TimeLockUpgrade, MutualUpgrade {
     ISetToken public setToken;
 
     // Address of IndexModule for managing rebalances
-    IIndexModule public indexModule;
+    IGeneralIndexModule public indexModule;
 
     // Address of StreamingFeeModule
     IStreamingFeeModule public feeModule;
@@ -66,7 +66,7 @@ contract ICManager is TimeLockUpgrade, MutualUpgrade {
 
     constructor(
         ISetToken _setToken,
-        IIndexModule _indexModule,
+        IGeneralIndexModule _indexModule,
         IStreamingFeeModule _feeModule,
         address _operator,
         address _methodologist,
@@ -125,7 +125,7 @@ contract ICManager is TimeLockUpgrade, MutualUpgrade {
         external
         onlyOperator
     {
-        indexModule.setTradeMaximums(_components, _tradeMaximums);
+        indexModule.setTradeMaximums(setToken, _components, _tradeMaximums);
     }
 
     /**
@@ -141,7 +141,7 @@ contract ICManager is TimeLockUpgrade, MutualUpgrade {
         external
         onlyOperator
     {
-        indexModule.setExchanges(_components, _exchanges);
+        indexModule.setExchanges(setToken, _components, _exchanges);
     }
 
     /**
@@ -157,7 +157,7 @@ contract ICManager is TimeLockUpgrade, MutualUpgrade {
         external
         onlyOperator
     {
-        indexModule.setCoolOffPeriods(_components, _coolOffPeriods);
+        indexModule.setCoolOffPeriods(setToken, _components, _coolOffPeriods);
     }
 
     /**
@@ -173,7 +173,7 @@ contract ICManager is TimeLockUpgrade, MutualUpgrade {
         external
         onlyOperator
     {
-        indexModule.updateTraderStatus(_traders, _statuses);
+        indexModule.setTraderStatus(setToken, _traders, _statuses);
     }
 
     /**
@@ -182,7 +182,7 @@ contract ICManager is TimeLockUpgrade, MutualUpgrade {
      * @param _status           Boolean indicating if anyone can trade
      */
     function updateAnyoneTrade(bool _status) external onlyOperator {
-        indexModule.updateAnyoneTrade(_status);
+        indexModule.setAnyoneTrade(setToken, _status);
     }
 
     /**
@@ -287,7 +287,7 @@ contract ICManager is TimeLockUpgrade, MutualUpgrade {
      *
      * @param _newIndexModule           New index module
      */
-    function updateIndexModule(IIndexModule _newIndexModule) external onlyOperator {
+    function updateIndexModule(IGeneralIndexModule _newIndexModule) external onlyOperator {
         indexModule = _newIndexModule;
     }
 

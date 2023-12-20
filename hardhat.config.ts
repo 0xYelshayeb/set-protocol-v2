@@ -51,7 +51,7 @@ const config: HardhatUserConfig = {
       blockGasLimit: 12000000
     },
     localhost: {
-      url: "http://127.0.0.1:8545",
+      url: "http://127.0.0.1:7545",
       forking: (process.env.FORK) ? forkingConfig : undefined,
       timeout: 200000,
       gas: 12000000,
@@ -61,6 +61,13 @@ const config: HardhatUserConfig = {
       url: "https://kovan.infura.io/v3/" + process.env.INFURA_TOKEN,
       // @ts-ignore
       accounts: [`0x${process.env.KOVAN_DEPLOY_PRIVATE_KEY}`],
+    },
+    sepolia: {
+      url: "https://eth-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_TOKEN,
+      accounts: [`0x${process.env.SEPOLIA_DEPLOY_PRIVATE_KEY}`],
+      timeout: 200000,
+      gas: 12000000,
+      blockGasLimit: 12000000
     },
     staging_mainnet: {
       url: "https://mainnet.infura.io/v3/" + process.env.INFURA_TOKEN,
