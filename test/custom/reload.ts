@@ -11,7 +11,7 @@ async function interactWithContracts() {
 
   // Create contract instances
   const controller: Contract = await ethers.getContractAt("Controller", deployedAddresses.Controller, signer);
-  const streamingFeeModule: StreamingFeeModule= await ethers.getContractAt("StreamingFeeModule", deployedAddresses.StreamingFeeModule, signer);
+  const streamingFeeModule: StreamingFeeModule = await ethers.getContractAt("StreamingFeeModule", deployedAddresses.StreamingFeeModule, signer);
   const indexModule: GeneralIndexModule = await ethers.getContractAt("GeneralIndexModule", deployedAddresses.GeneralIndexModule, signer);
   const setToken: Contract = await ethers.getContractAt("SetToken", deployedAddresses.SetToken, signer);
   const icManager: Contract = await ethers.getContractAt("ICManager", deployedAddresses.ICManager, signer);
@@ -39,7 +39,7 @@ async function interactWithContracts() {
   await multiSigInstance.executeRebalance();
 
   const IndexModuleInstance = indexModule.connect(signer);
-  IndexModuleInstance.trade(deployedAddresses.SetToken, deployedAddresses.ComponentAddresses[0], 1);
+  await IndexModuleInstance.trade(deployedAddresses.SetToken, deployedAddresses.ComponentAddresses[0], 1);
 }
 
 interactWithContracts()

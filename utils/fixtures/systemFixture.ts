@@ -79,8 +79,6 @@ export class SystemFixture {
 
     await this.initializeStandardComponents();
 
-    this.integrationRegistry = await this._deployer.core.deployIntegrationRegistry(this.controller.address);
-
     this.factory = await this._deployer.core.deploySetTokenCreator(this.controller.address);
     this.priceOracle = await this._deployer.core.deployPriceOracle(
       this.controller.address,
@@ -125,6 +123,7 @@ export class SystemFixture {
     this.BTC_USD_Oracle = await this._deployer.mocks.deployOracleMock(this.component3Price);
     this.DAI_USD_Oracle = await this._deployer.mocks.deployOracleMock(this.component4Price);
 
+    await this.weth.deposit({ value: ether(5000) });
     await this.weth.approve(this.issuanceModule.address, ether(10000));
     await this.usdc.approve(this.issuanceModule.address, ether(10000));
     await this.wbtc.approve(this.issuanceModule.address, ether(10000));

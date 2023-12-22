@@ -1,6 +1,7 @@
 import { providers } from "ethers";
 import { ContractTransaction, Signer } from "ethers";
 import { BigNumber } from "ethers";
+import { IERC20 } from "@typechain/IERC20";
 
 import {
   BasicIssuanceModule,
@@ -46,9 +47,11 @@ export class SystemFixtureDeploy {
   public navIssuanceModule: CustomOracleNavIssuanceModule;
 
   public weth: WETH9;
+  public wbtc: StandardTokenMock;
   public usdc: StandardTokenMock;
+  public dai: StandardTokenMock;
 
-  public components: StandardTokenMock[] = [];
+  public components: IERC20[] = [];
   public oracles: OracleMock[] = [];
 
   constructor(provider: providers.Web3Provider | providers.JsonRpcProvider, ownerAddress: Address) {
@@ -68,19 +71,18 @@ export class SystemFixtureDeploy {
 
     await this.initializeStandardComponents();
 
-    this.integrationRegistry = await this._deployer.core.deployIntegrationRegistry(this.controller.address);
-
     this.factory = await this._deployer.core.deploySetTokenCreator(this.controller.address);
     this.priceOracle = await this._deployer.core.deployPriceOracle(
       this.controller.address,
-      this.usdc.address,
+      this.weth.address,
       [],
       this.components.map(component => component.address),
-      this.components.map(() => this.usdc.address),
+      this.components.map(() => this.weth.address),
       this.oracles.map(oracle => oracle.address),
     );
 
     this.integrationRegistry = await this._deployer.core.deployIntegrationRegistry(this.controller.address);
+
     this.setValuer = await this._deployer.core.deploySetValuer(this.controller.address);
     this.streamingFeeModule = await this._deployer.modules.deployStreamingFeeModule(this.controller.address);
     this.navIssuanceModule = await this._deployer.modules.deployCustomOracleNavIssuanceModule(this.controller.address, this.weth.address);
@@ -95,7 +97,9 @@ export class SystemFixtureDeploy {
 
   public async initializeStandardComponents(): Promise<void> {
     this.weth = await this._deployer.external.deployWETH();
+    this.wbtc = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(1000000), 8);
     this.usdc = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(1000000), 6);
+    this.dai = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(1000000), 18);
 
     for (let i = 0; i < 10; i++) {
       this.components.push(await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(10000), 18));

@@ -3,6 +3,7 @@ export { BalancerFixture } from "./balancerFixture";
 export { CompoundFixture } from "./compoundFixture";
 export { CurveFixture } from "./curveFixture";
 export { KyberV3DMMFixture } from "./kyberV3DMMFixture";
+export { KyberV3DMMFixtureDeploy } from "./kyberV3DMMFixtureDeploy";
 export { SystemFixture } from "./systemFixture";
 export { SystemFixtureDeploy } from "./systemFixtureDeploy";
 export { UniswapFixture } from "./uniswapFixture";

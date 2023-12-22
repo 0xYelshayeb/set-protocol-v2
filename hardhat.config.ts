@@ -55,7 +55,7 @@ const config: HardhatUserConfig = {
       forking: (process.env.FORK) ? forkingConfig : undefined,
       timeout: 200000,
       gas: 12000000,
-      blockGasLimit: 12000000
+      blockGasLimit: 120000000
     },
     kovan: {
       url: "https://kovan.infura.io/v3/" + process.env.INFURA_TOKEN,

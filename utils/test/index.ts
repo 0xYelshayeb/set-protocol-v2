@@ -8,6 +8,7 @@ import {
   CompoundFixture,
   CurveFixture,
   KyberV3DMMFixture,
+  KyberV3DMMFixtureDeploy,
   SystemFixture,
   SystemFixtureDeploy,
   UniswapFixture,
@@ -28,6 +29,7 @@ export const getBalancerFixture = (ownerAddress: Address) => new BalancerFixture
 export const getCurveFixture = (ownerAddress: Address) => new CurveFixture(provider, ownerAddress);
 export const getCompoundFixture = (ownerAddress: Address) => new CompoundFixture(provider, ownerAddress);
 export const getKyberV3DMMFixture = (ownerAddress: Address) => new KyberV3DMMFixture(provider, ownerAddress);
+export const getKyberV3DMMFixtureDeploy = (ownerAddress: Address) => new KyberV3DMMFixtureDeploy(provider, ownerAddress);
 export const getUniswapFixture = (ownerAddress: Address) => new UniswapFixture(provider, ownerAddress);
 export const getYearnFixture = (ownerAddress: Address) => new YearnFixture(provider, ownerAddress);
 export const getUniswapV3Fixture = (ownerAddress: Address) => new UniswapV3Fixture(provider, ownerAddress);
