@@ -1,7 +1,6 @@
 import { providers } from "ethers";
 import { ContractTransaction, Signer } from "ethers";
 import { BigNumber } from "ethers";
-import { IERC20 } from "@typechain/IERC20";
 
 import {
   BasicIssuanceModule,
@@ -47,11 +46,8 @@ export class SystemFixtureDeploy {
   public navIssuanceModule: CustomOracleNavIssuanceModule;
 
   public weth: WETH9;
-  public wbtc: StandardTokenMock;
-  public usdc: StandardTokenMock;
-  public dai: StandardTokenMock;
 
-  public components: IERC20[] = [];
+  public components: StandardTokenMock[] = [];
   public oracles: OracleMock[] = [];
 
   constructor(provider: providers.Web3Provider | providers.JsonRpcProvider, ownerAddress: Address) {
@@ -76,8 +72,8 @@ export class SystemFixtureDeploy {
       this.controller.address,
       this.weth.address,
       [],
-      this.components.map(component => component.address),
-      this.components.map(() => this.weth.address),
+      this.components.map(component => component.address).concat(this.weth.address),
+      this.components.map(() => this.weth.address).concat(this.weth.address),
       this.oracles.map(oracle => oracle.address),
     );
 
@@ -97,9 +93,6 @@ export class SystemFixtureDeploy {
 
   public async initializeStandardComponents(): Promise<void> {
     this.weth = await this._deployer.external.deployWETH();
-    this.wbtc = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(1000000), 8);
-    this.usdc = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(1000000), 6);
-    this.dai = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(1000000), 18);
 
     for (let i = 0; i < 10; i++) {
       this.components.push(await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(10000), 18));
@@ -107,8 +100,10 @@ export class SystemFixtureDeploy {
     }
 
     for (let i = 0; i < 10; i++) {
-      this.oracles.push(await this._deployer.mocks.deployOracleMock(ether(i + 1)));
+      this.oracles.push(await this._deployer.mocks.deployOracleMock(ether((i/5) + 1).div(2)));
     }
+
+    this.oracles.push(await this._deployer.mocks.deployOracleMock(ether(1)));
 
   }
 

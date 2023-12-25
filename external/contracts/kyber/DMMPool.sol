@@ -15,6 +15,9 @@ import "./interfaces/IDMMCallee.sol";
 import "./interfaces/IDMMPool.sol";
 import "./interfaces/IERC20Metadata.sol";
 import "./VolumeTrendRecorder.sol";
+// import console logging hardhat
+
+import "hardhat/console.sol";
 
 contract DMMPool is IDMMPool, ERC20Permit, ReentrancyGuard, VolumeTrendRecorder {
     using SafeMath for uint256;
@@ -70,6 +73,7 @@ contract DMMPool is IDMMPool, ERC20Permit, ReentrancyGuard, VolumeTrendRecorder 
         IERC20 _token1,
         uint32 _ampBps
     ) external {
+        console.log("here");
         require(msg.sender == address(factory), "DMM: FORBIDDEN");
         token0 = _token0;
         token1 = _token1;
@@ -83,11 +87,16 @@ contract DMMPool is IDMMPool, ERC20Permit, ReentrancyGuard, VolumeTrendRecorder 
         ReserveData memory _data;
         _data.reserve0 = token0.balanceOf(address(this));
         _data.reserve1 = token1.balanceOf(address(this));
+        console.log("_data.reserve0: ", _data.reserve0);
+        console.log("_data.reserve1: ", _data.reserve1);
+        console.log("data.reserve0: ", data.reserve0);
+        console.log("data.reserve1: ", data.reserve1);
         uint256 amount0 = _data.reserve0.sub(data.reserve0);
         uint256 amount1 = _data.reserve1.sub(data.reserve1);
 
         bool feeOn = _mintFee(isAmpPool, data);
         uint256 _totalSupply = totalSupply(); // gas savings, must be defined here since totalSupply can update in _mintFee
+        console.log("totalSupply: ", _totalSupply);
         if (_totalSupply == 0) {
             if (isAmpPool) {
                 uint32 _ampBps = ampBps;

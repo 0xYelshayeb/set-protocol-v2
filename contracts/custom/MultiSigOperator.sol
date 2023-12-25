@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.10;
 
-import {IICManager} from "./IICManager.sol";
+import { IICManager } from "./IICManager.sol";
 
 contract MultiSigOperator {
 

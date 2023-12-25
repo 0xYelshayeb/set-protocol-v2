@@ -34,4 +34,10 @@ interface IGeneralIndexModule {
     function setTraderStatus(ISetToken _setToken, address[] calldata _traders, bool[] calldata _statuses) external;
 
     function setAnyoneTrade(ISetToken _setToken, bool _status) external;
+
+    function trade(
+        ISetToken _setToken,
+        address _component,
+        uint256 _quantity
+    ) external;
 }
