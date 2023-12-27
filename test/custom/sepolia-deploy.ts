@@ -99,10 +99,10 @@ async function main() {
     setValuer: "0x0000000000000000000000000000000000000000",
     reserveAssets: [setup.weth.address],
     feeRecipient: manager.address,
-    managerFees: [BigNumber.from("0"), BigNumber.from("0")], // 0.01% issue and redeem fees
-    maxManagerFee: BigNumber.from("0"), // 5%
-    premiumPercentage: BigNumber.from("0"), // 0.01%
-    maxPremiumPercentage: BigNumber.from("0"), // 5%
+    managerFees: [BigNumber.from("0"), BigNumber.from("0")],
+    maxManagerFee: BigNumber.from("0"),
+    premiumPercentage: BigNumber.from("0"),
+    maxPremiumPercentage: BigNumber.from("0"),
     minSetTokenSupply: BigNumber.from("1") // 1 SetToken (in wei)
   } as NAVIssuanceSettingsStruct;
   await setup.navIssuanceModule.initialize(setToken.address, navIssuanceSettings);
@@ -174,8 +174,16 @@ async function main() {
   // Deploy MultiSigOperator
   const MultiSigOperator = await hre.ethers.getContractFactory("MultiSigOperator");
   const MultiSigInstance = await MultiSigOperator.deploy(
-    [manager.address], 1, 1, manager.address, icManagerInstance.address
+    [
+      manager.address,
+      "0xC46d6ef4136c26B1852065a4059Bde62071E8B1a",
+      "0xA2bd8A9C88c4dD4014144C6536058942fdb95b50",
+      "0x8D7300F28923F74A65a94B1cC3482ddc5A534f05",
+      "0x939399ed6433e58d6e9a31d260c29f2bba3273de",
+      "0x8Fa3C3157e3963ce4b67d326171b687F04EdB824"
+    ], 3, 5, manager.address, icManagerInstance.address
   );
+
   await MultiSigInstance.deployed();
 
   // Update Operator

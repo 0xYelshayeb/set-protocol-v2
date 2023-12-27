@@ -77,7 +77,7 @@ export class KyberV3DMMFixtureDeploy {
   private async addLiquidityToPool(pool: DMMPool, manager: Account, weth: IERC20, component: Contract, oracle: OracleMock): Promise<void> {
     const oraclePrice = await oracle.read();
 
-    const wethAmount = ether(0.5); // 800 WETH, for example
+    const wethAmount = ether(0.6); // 800 WETH, for example
     const componentAmount = wethAmount.mul(oraclePrice).div(ether(1)); // Adjust based on the oracle price
 
     await weth.connect(manager.wallet).approve(this.dmmRouter.address, wethAmount);
