@@ -27,7 +27,7 @@ async function main() {
   console.log("Fund manager with WETH... Done");
 
   const kyberSetup = getKyberV3DMMFixtureDeploy(manager.address);
-  await kyberSetup.initialize(managerAccount, setup.weth, setup.components, setup.oracles);
+  await kyberSetup.initialize(managerAccount, setup.weth, setup.components, setup.oracles, ether("0.1"));
 }
 
 main()
