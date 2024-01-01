@@ -32,10 +32,13 @@ export class KyberV3DMMFixtureDeploy {
     this._deployer = new DeployHelper(this._ownerSigner);
   }
 
-  public async initialize(_owner: Account, _weth: IERC20, _components: Contract[], _oracles: OracleMock[]): Promise<void> {
+  public async initialize(_owner: Account, _weth: IERC20, _components: Contract[], _oracles: OracleMock[], wethAmount: BigNumber): Promise<void> {
+    console.log("Deploying Pools and adding liquidity to them...");
     this.owner = _owner;
     this.dmmFactory = await this._deployer.external.deployDMMFactory(this.owner.address);
     this.dmmRouter = await this._deployer.external.deployDMMRouter02(this.dmmFactory.address, _weth.address);
+
+    console.log("Deployed Factory and Router...");
 
     for (let i = 0; i < _components.length; i++) {
       const component = _components[i];
@@ -47,8 +50,7 @@ export class KyberV3DMMFixtureDeploy {
       );
       this.componentPoolsMap.set(component.address, pool);
 
-      // await pool.connect(_manager.wallet).mint(_manager.address);
-      await this.addLiquidityToPool(pool, _owner, _weth, component, oracle);
+      await this.addLiquidityToPool(pool, _owner, _weth, component, oracle, wethAmount);
     }
 
     console.log("Deployed Pools and added liquidity to them...");
@@ -65,7 +67,8 @@ export class KyberV3DMMFixtureDeploy {
    * @param _ampBps     Amplification factor (in BPS)
    */
   public async createNewPool(_tokenA: Address, _tokenB: Address, _ampBps: BigNumber): Promise<DMMPool> {
-    await this.dmmFactory.createPool(_tokenA, _tokenB, _ampBps);
+    const tx = await this.dmmFactory.createPool(_tokenA, _tokenB, _ampBps);
+    await tx.wait();
     const poolAddress = await this.dmmFactory.allPools((await this.dmmFactory.allPoolsLength()).sub(1));
     return new DMMPool__factory(this._ownerSigner).attach(poolAddress);
   }
@@ -74,14 +77,21 @@ export class KyberV3DMMFixtureDeploy {
     return _tokenOne.toLowerCase() < _tokenTwo.toLowerCase() ? [_tokenOne, _tokenTwo] : [_tokenTwo, _tokenOne];
   }
 
-  private async addLiquidityToPool(pool: DMMPool, manager: Account, weth: IERC20, component: Contract, oracle: OracleMock): Promise<void> {
+  private async addLiquidityToPool(
+    pool: DMMPool, manager: Account, weth: IERC20, component: Contract, oracle: OracleMock, wethAmt: BigNumber
+  ): Promise<void> {
+
+    console.log("Reading oracle price...");
     const oraclePrice = await oracle.read();
 
-    const wethAmount = ether(0.6); // 800 WETH, for example
+    const wethAmount = wethAmt.div(10);
     const componentAmount = wethAmount.mul(oraclePrice).div(ether(1)); // Adjust based on the oracle price
 
-    await weth.connect(manager.wallet).approve(this.dmmRouter.address, wethAmount);
-    await component.connect(manager.wallet).approve(this.dmmRouter.address, componentAmount);
+    const tx = await weth.connect(manager.wallet).approve(this.dmmRouter.address, wethAmount);
+    const tx2 = await component.connect(manager.wallet).approve(this.dmmRouter.address, componentAmount);
+
+    await tx.wait();
+    await tx2.wait();
 
     await this.dmmRouter.connect(manager.wallet).addLiquidity(
       weth.address,
@@ -90,11 +100,13 @@ export class KyberV3DMMFixtureDeploy {
       wethAmount,
       componentAmount,
       // Set minimum amounts to slightly less than the actual to account for slippage
-      wethAmount.mul(99).div(100),
-      componentAmount.mul(99).div(100),
+      wethAmount.mul(75).div(100),
+      componentAmount.mul(75).div(100),
       [0, ethers.constants.MaxUint256],
       manager.address,
       ethers.constants.MaxUint256
     );
+
+    console.log("Added liquidity to pool...");
   }
 }

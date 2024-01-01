@@ -12,9 +12,14 @@ export class ProtocolUtils {
     this._provider = _provider;
   }
 
-  public async getCreatedSetTokenAddress (txnHash: string | undefined): Promise<string> {
+  public async getCreatedSetTokenAddress(txnHash: string | undefined): Promise<string> {
     if (!txnHash) {
       throw new Error("Invalid transaction hash");
+    }
+
+    const txnReceipt = await this._provider.waitForTransaction(txnHash);
+    if (!txnReceipt.status) {
+      throw new Error("Transaction failed");
     }
 
     const abi = ["event SetTokenCreated(address indexed _setToken, address _manager, string _name, string _symbol)"];

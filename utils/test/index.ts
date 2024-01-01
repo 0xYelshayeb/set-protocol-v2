@@ -14,7 +14,8 @@ import {
   UniswapFixture,
   YearnFixture,
   UniswapV3Fixture,
-  PerpV2Fixture
+  PerpV2Fixture,
+  SystemFixtureDeployReduced
 } from "../fixtures";
 import { Blockchain, ProtocolUtils } from "../common";
 
@@ -34,6 +35,7 @@ export const getUniswapFixture = (ownerAddress: Address) => new UniswapFixture(p
 export const getYearnFixture = (ownerAddress: Address) => new YearnFixture(provider, ownerAddress);
 export const getUniswapV3Fixture = (ownerAddress: Address) => new UniswapV3Fixture(provider, ownerAddress);
 export const getPerpV2Fixture = (ownerAddress: Address) => new PerpV2Fixture(provider, ownerAddress);
+export const getSystemFixtureDeployReduced = (ownerAddress: Address) => new SystemFixtureDeployReduced(provider, ownerAddress);
 
 export { ForkedTokens } from "./types";
 

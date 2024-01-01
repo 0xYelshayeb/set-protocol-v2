@@ -33,26 +33,26 @@ async function main() {
 
   await setup.initialize();
 
-  console.log("Fund manager with WETH...");
-  const tx = await setup.weth.connect(manager).deposit({ value: ether("6") });
-  await tx.wait();
-
-  console.log("Funded manager with WETH...");
-
   const weights = [];
   for (let i = 0; i < 10; i++) {
     weights.push(BigNumber.from("1000000000000000000"));
   }
 
+  console.log("Deploying StreamingFeeModule...");
+
   let streamingFeeModule = await deployer.modules.deployStreamingFeeModule(setup.controller.address);
   await setup.controller.addModule(streamingFeeModule.address);
+
+  console.log("Deploying GeneralIndexModule...");
 
   // IndexModule Deployment
   let indexModule = await deployer.modules.deployGeneralIndexModule(setup.controller.address, setup.weth.address);
   await setup.controller.addModule(indexModule.address);
 
+  const managerWethBalance = await setup.weth.balanceOf(manager.address);
+
   const kyberSetup = getKyberV3DMMFixtureDeploy(manager.address);
-  await kyberSetup.initialize(managerAccount, setup.weth, setup.components, setup.oracles);
+  await kyberSetup.initialize(managerAccount, setup.weth, setup.components, setup.oracles, managerWethBalance.mul(50).div(100));
 
   const kyberExchangeAdapter = await deployer.adapters.deployKyberV3IndexExchangeAdapter(
     kyberSetup.dmmRouter.address,
@@ -83,10 +83,14 @@ async function main() {
     "SET"
   );
 
+  console.log("Deploying BasicIssuanceModule...");
+
   // Deploy mock issuance hook and initialize issuance module
   setup.issuanceModule = setup.issuanceModule.connect(manager);
   const mockPreIssuanceHook = await deployer.mocks.deployManagerIssuanceHookMock();
   await setup.issuanceModule.initialize(setToken.address, mockPreIssuanceHook.address);
+
+  console.log("Deploying NAVIssuanceModule...");
 
   // Deploy mock nav issuance hook and initialize nav issuance module
   setup.navIssuanceModule = setup.navIssuanceModule.connect(manager);
@@ -110,6 +114,8 @@ async function main() {
   // Approve WETH on navIssuanceModule
   setup.weth = setup.weth.connect(manager);
   await setup.weth.approve(setup.navIssuanceModule.address, ethers.constants.MaxUint256);
+
+  console.log("Deploying ICManager...");
 
   const ICManager = await hre.ethers.getContractFactory("ICManager");
   let icManagerInstance = await ICManager.deploy(
@@ -200,7 +206,7 @@ async function main() {
     multiSigOperator: MultiSigInstance.address,
     navIssuanceModule: setup.navIssuanceModule.address,
     basicIssuanceModule: setup.issuanceModule.address,
-    oracleAddress: setup.priceOracle.address,
+    oracleAddresses: setup.oracles.map(oracle => oracle.address),
     components: setup.components.map(component => component.address),
     weth: setup.weth.address,
   };

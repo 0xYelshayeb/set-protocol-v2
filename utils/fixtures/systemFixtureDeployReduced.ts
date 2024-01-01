@@ -13,7 +13,7 @@ import {
   SetValuer,
   StandardTokenMock,
   StreamingFeeModule,
-  // WETH9,
+  WETH9,
   CustomOracleNavIssuanceModule
 } from "../contracts";
 import DeployHelper from "../deploys";
@@ -27,7 +27,7 @@ import {
 
 import { SetToken__factory } from "../../typechain/factories/SetToken__factory";
 
-export class SystemFixtureDeploy {
+export class SystemFixtureDeployReduced {
   private _provider: providers.Web3Provider | providers.JsonRpcProvider;
   private _ownerAddress: Address;
   private _ownerSigner: Signer;
@@ -45,7 +45,7 @@ export class SystemFixtureDeploy {
   public streamingFeeModule: StreamingFeeModule;
   public navIssuanceModule: CustomOracleNavIssuanceModule;
 
-  public weth: StandardTokenMock;
+  public weth: WETH9;
 
   public components: StandardTokenMock[] = [];
   public oracles: OracleMock[] = [];
@@ -92,19 +92,17 @@ export class SystemFixtureDeploy {
   }
 
   public async initializeStandardComponents(): Promise<void> {
-    // this.weth = await this._deployer.external.deployWETH();
-    // changed to allow manager to have a large amount of WETH
-    this.weth = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(10000), 18);
+    this.weth = await this._deployer.external.deployWETH();
 
     console.log("Deployed weth...");
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 1; i++) {
       this.components.push(await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(10000), 18));
       await this.components[i].approve(this.issuanceModule.address, ether(10000));
       console.log("Deployed component " + i + "...");
     }
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 1; i++) {
       this.oracles.push(await this._deployer.mocks.deployOracleMock(ether((i/5) + 1).div(2)));
       console.log("Deployed oracle " + i + "...");
     }
