@@ -25,6 +25,7 @@ contract MultiSigOperator {
 
     address[] public owners;
     address public operator;
+    address public priorityOwner;
     mapping(address => bool) public isOwner;
     uint public numConfirmationsRequired;
     uint public numConfirmationsRequiredOperator;
@@ -78,7 +79,7 @@ contract MultiSigOperator {
         _;
     }
 
-    constructor(address[] memory _owners, uint _numConfirmationsRequired, uint _numConfirmationsRequiredOperator, address _operator, IICManager _manager) public {
+    constructor(address[] memory _owners, uint _numConfirmationsRequired, uint _numConfirmationsRequiredOperator, address _operator, IICManager _manager, address _priorityOwner) public {
         require(_owners.length > 0, "owners required");
         require(
             _numConfirmationsRequired > 0 &&
@@ -94,6 +95,7 @@ contract MultiSigOperator {
 
         operator = _operator;
         manager = _manager;
+        priorityOwner = _priorityOwner;
 
         for (uint i = 0; i < _owners.length; i++) {
             address owner = _owners[i];
@@ -110,9 +112,24 @@ contract MultiSigOperator {
         rebalanceNum = 0;
     }
 
+    function priorityRebalance(
+        address[] calldata _newComponents,
+        uint256[] calldata _newComponentsTargetUnits,
+        uint256[] calldata _oldComponentsTargetUnits,
+        uint256 _positionMultiplier
+    ) public {
+        require(msg.sender == priorityOwner, "not priority owner");
+
+        manager.startRebalance(_newComponents, _newComponentsTargetUnits, _oldComponentsTargetUnits, _positionMultiplier);
+
+        emit ExecuteRebalance(msg.sender, rebalanceNum);
+    }
+
     function submitNewOperator(address _newOperator) public onlyOwner {
+        for (uint8 i = 0; i < owners.length; i++) {
+            operatorConfirmed[owners[i]] = false;
+        }
         operatorProposal = OperatorProposal(_newOperator, 0);
-        operatorConfirmed[msg.sender] = true;
         operatorProposal.numConfirmations += 1;
         emit SubmitNewOperator(_newOperator);
     }
@@ -141,6 +158,9 @@ contract MultiSigOperator {
         uint256[] calldata _oldComponentsTargetUnits,
         uint256 _positionMultiplier
     ) public onlyOperator {
+        for (uint8 i = 0; i < owners.length; i++) {
+            rebalanceConfirmed[owners[i]] = false;
+        }
         currentRebalance = Rebalance(_newComponents, _newComponentsTargetUnits, _oldComponentsTargetUnits, _positionMultiplier, false, 0, rebalanceNum);
 
         rebalanceNum += 1;
@@ -184,5 +204,9 @@ contract MultiSigOperator {
 
     function getRebalance() public view returns (address[] memory, uint256[] memory, uint256[] memory, uint256, bool, uint, uint) {
         return (currentRebalance.newComponents, currentRebalance.newComponentsTargetUnits, currentRebalance.oldComponentsTargetUnits, currentRebalance.positionMultiplier, currentRebalance.executed, currentRebalance.numConfirmations, currentRebalance.rebalanceNum);
+    }
+
+    function getOperatorProposal() public view returns (address, uint) {
+        return (operatorProposal.newOperator, operatorProposal.numConfirmations);
     }
 }

@@ -33,8 +33,8 @@ async function main() {
   await setup.initialize();
 
   console.log("Fund manager with WETH...");
-  const tx = await setup.weth.connect(manager).deposit({ value: ether("5.5") });
-  await tx.wait();
+  // const tx = await setup.weth.connect(manager).deposit({ value: ether("5.5") });
+  // await tx.wait();
 
   console.log("Funded manager with WETH...");
 
@@ -273,11 +273,16 @@ async function main() {
   setup.navIssuanceModule = setup.navIssuanceModule.connect(manager);
   await setup.navIssuanceModule.redeem(setToken.address, setup.weth.address, ether(0.001), ether(0), manager.address);
 
+  setup.issuanceModule = setup.issuanceModule.connect(manager);
+  await setup.issuanceModule.redeem(setToken.address, ether(0.001), manager.address);
+
   setTokenBalance = await setToken.balanceOf(manager.address);
   console.log(`Manager's SetToken Balance: ${ethers.utils.formatEther(setTokenBalance)} SET`);
 
   wethBalance = await setup.weth.balanceOf(setToken.address);
   console.log(`SetToken Balance: ${ethers.utils.formatEther(wethBalance)} WETH`);
+
+  setToken.getComponents();
 
 }
 

@@ -26,4 +26,11 @@ interface IICManager {
      * @param _newOperator           New operator address
      */
     function updateOperator(address _newOperator) external;
+
+    /**
+     * METHODOLOGIST ONLY: Update the methodologist address
+     *
+     * @param _newMethodologist           New methodologist address
+     */
+    function updateMethodologist(address _newMethodologist) external;
 }

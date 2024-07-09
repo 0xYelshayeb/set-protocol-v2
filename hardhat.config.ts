@@ -1,5 +1,4 @@
 require("dotenv").config();
-require("hardhat-contract-sizer");
 
 import chalk from "chalk";
 import { HardhatUserConfig } from "hardhat/config";
@@ -45,10 +44,12 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: false,
-      forking: (process.env.FORK) ? forkingConfig : undefined,
+      forking: {
+        url: "https://eth-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_TOKEN,
+      },
       accounts: getHardhatPrivateKeys(),
       gas: 12000000,
-      blockGasLimit: 12000000
+      blockGasLimit: 12000000,
     },
     localhost: {
       url: "http://127.0.0.1:7545",
@@ -66,8 +67,11 @@ const config: HardhatUserConfig = {
       url: "https://eth-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_TOKEN,
       accounts: [`0x${process.env.SEPOLIA_DEPLOY_PRIVATE_KEY}`],
       timeout: 200000,
-      gas: 12000000,
-      blockGasLimit: 12000000
+      gas: 12000000, // Adjust to a reasonable gas limit
+      blockGasLimit: 30000000, // Typical block gas limit
+      loggingEnabled: true,
+      throwOnTransactionFailures: true,
+      throwOnCallFailures: true
     },
     staging_mainnet: {
       url: "https://mainnet.infura.io/v3/" + process.env.INFURA_TOKEN,
@@ -97,6 +101,9 @@ const config: HardhatUserConfig = {
   },
 
   mocha: mochaConfig,
+  sourcify: {
+    enabled: true
+  },
 
   // These are external artifacts we don't compile but would like to improve
   // test performance for by hardcoding the gas into the abi at runtime
@@ -104,6 +111,9 @@ const config: HardhatUserConfig = {
   externalGasMods: [
     "external/abi/perp",
   ],
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY,
+  },
 };
 
 function getHardhatPrivateKeys() {
@@ -118,8 +128,8 @@ function getHardhatPrivateKeys() {
 
 function checkForkedProviderEnvironment() {
   if (process.env.FORK &&
-      (!process.env.ALCHEMY_TOKEN || process.env.ALCHEMY_TOKEN === "fake_alchemy_token")
-     ) {
+    (!process.env.ALCHEMY_TOKEN || process.env.ALCHEMY_TOKEN === "fake_alchemy_token")
+  ) {
     console.log(chalk.red(
       "You are running forked provider tests with invalid Alchemy credentials.\n" +
       "Update your ALCHEMY_TOKEN settings in the `.env` file."

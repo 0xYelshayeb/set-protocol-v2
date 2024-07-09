@@ -24,6 +24,8 @@ import { BytesLib } from "external/contracts/uniswap/v3/lib/BytesLib.sol";
 
 import { IIndexExchangeAdapter } from "../../../interfaces/IIndexExchangeAdapter.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title UniswapV3IndexExchangeAdapter
  * @author Set Protocol
@@ -37,10 +39,11 @@ contract UniswapV3IndexExchangeAdapter is IIndexExchangeAdapter {
 
     /* ============ Constants ============ */
 
+    // todo: update to mainnet signature
     // Uniswap router function string for swapping exact amount of input tokens for a minimum of output tokens
-    string internal constant SWAP_EXACT_INPUT = "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))";
+    string internal constant SWAP_EXACT_INPUT = "exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))";
     // Uniswap router function string for swapping max amoutn of input tokens for an exact amount of output tokens
-    string internal constant SWAP_EXACT_OUTPUT = "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))";
+    string internal constant SWAP_EXACT_OUTPUT = "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint160))";
 
     /* ============ State Variables ============ */
 
@@ -106,27 +109,28 @@ contract UniswapV3IndexExchangeAdapter is IIndexExchangeAdapter {
     {
         uint24 fee = _data.toUint24(0);
 
+        // todo: undo deadline for mainnet deployment
         bytes memory callData = _isSendTokenFixed
             ? abi.encodeWithSignature(
                 SWAP_EXACT_INPUT,
-                ISwapRouter.ExactInputSingleParams(
+                ISwapRouter.ExactInputSingleParamsTest(
                     _sourceToken,
                     _destinationToken,
                     fee,
                     _destinationAddress,
-                    block.timestamp,
+                    // block.timestamp,
                     _sourceQuantity,
-                    _destinationQuantity,
+                    0,
                     0
                 )
             ) : abi.encodeWithSignature(
                 SWAP_EXACT_OUTPUT,
-                ISwapRouter.ExactOutputSingleParams(
+                ISwapRouter.ExactOutputSingleParamsTest(
                     _sourceToken,
                     _destinationToken,
                     fee,
                     _destinationAddress,
-                    block.timestamp,
+                    // block.timestamp,
                     _destinationQuantity,
                     _sourceQuantity,
                     0
