@@ -45,7 +45,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       allowUnlimitedContractSize: false,
       forking: {
-        url: "https://eth-sepolia.g.alchemy.com/v2/" + process.env.ALCHEMY_TOKEN,
+        url: "https://arb-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY_TOKEN,
       },
       accounts: getHardhatPrivateKeys(),
       gas: 12000000,
