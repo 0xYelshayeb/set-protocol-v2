@@ -11,7 +11,6 @@ import hre from "hardhat";
 import { ethers } from "hardhat";
 import { NAVIssuanceSettingsStruct } from "@typechain/CustomOracleNavIssuanceModule";
 import { MAX_UINT_256 } from "@utils/constants";
-import fs from "fs";
 import { NULL_ADDRESS } from "@0x/utils";
 
 async function main() {
@@ -44,8 +43,8 @@ async function main() {
   console.log("Deploying SetToken...");
   // Deploy SetToken with navIissuanceModule, indexmodule
   let setToken = await setup.createSetToken(
-    [setup.aave.address, setup.uni.address],
-    [ether(0.5), ether(0.5)],
+    setup.components.map(com => com.address),
+    setup.components.map(() => ether(1).div(setup.components.length)),
     [
       setup.issuanceModule.address,
       setup.navIssuanceModule.address,
@@ -139,7 +138,7 @@ async function main() {
     [manager.address, preNavIssuanceHook.address],
     [true, true]
   );
-  await tx.wait();
+
 
   console.log("Deploying MultiSigOperator...");
 
@@ -164,21 +163,38 @@ async function main() {
   icManagerInstance = icManagerInstance.connect(manager);
   await icManagerInstance.updateOperator(MultiSigInstance.address);
 
-  // write addresses to file
-  const addresses = {
-    controller: setup.controller.address,
-    setToken: setToken.address,
-    icManager: icManagerInstance.address,
-    indexModule: indexModule.address,
-    multiSigOperator: MultiSigInstance.address,
-    navIssuanceModule: setup.navIssuanceModule.address,
-    basicIssuanceModule: setup.issuanceModule.address,
-    components: setup.components.map(component => component.address),
-    weth: setup.weth.address,
-  };
+  await preNavIssuanceHook.setNavIssuanceModule(setup.navIssuanceModule.address);
+  await preNavIssuanceHook.setMultiSigOperator(MultiSigInstance.address);
 
-  fs.writeFileSync("test/custom/addresses.json", JSON.stringify(addresses, undefined, 2));
+  setup.issuanceModule = setup.issuanceModule.connect(manager);
+  const tx1 = await setup.issuanceModule.issue(setToken.address, ether(100), manager.address);
+  await tx1.wait();
 
+  console.log("Issued setToken with issuanceModule");
+
+  setup.navIssuanceModule = setup.navIssuanceModule.connect(manager);
+  const tx2 = await setup.navIssuanceModule.issue(setToken.address, setup.weth.address, ether(10), ether(0), manager.address);
+  await tx2.wait();
+
+  console.log("Issued setToken with navIssuanceModule");
+
+  // MultiSigInstance = MultiSigInstance.connect(manager);
+  // await MultiSigInstance.submitRebalance([], [], [ether(0.8), ether(0.2), ether(0)], ether(1))
+  // await MultiSigInstance.confirmRebalance();
+  // await MultiSigInstance.executeRebalance();
+
+  // trade all components
+  // indexModule = indexModule.connect(manager);
+  // const tx3 = await indexModule.trade(setToken.address, setup.uni.address, 0);
+  // await tx3.wait();
+
+  // indexModule = indexModule.connect(manager);
+  // const tx4 = await indexModule.trade(setToken.address, setup.aave.address, MAX_UINT_256);
+  // await tx4.wait();
+
+  setup.navIssuanceModule = setup.navIssuanceModule.connect(manager);
+  const tx3 = await setup.navIssuanceModule.redeem(setToken.address, setup.weth.address, ether(50), ether(1), manager.address);
+  await tx3.wait();
 }
 
 main()

@@ -6,53 +6,54 @@ import { IICManager } from "./IICManager.sol";
 contract MultiSigOperator {
 
     event SubmitRebalance(
-        uint indexed rebalanceNum,
+        uint256 indexed rebalanceNum,
         address[] newComponents,
         uint256[] newComponentsTargetUnits,
         uint256[] oldComponentsTargetUnits, 
         uint256 positionMultiplier
     );
 
-    event SubmitNewOperator(
-        address indexed newOperator
-    );
-
-    event NewOperator(address indexed newOperator);
-    event ConfirmRebalance(address indexed owner, uint indexed rebalanceNum);
-    event ConfirmNewOperator(address indexed owner, address indexed newOperator);
-    event RevokeConfirmation(address indexed owner, uint indexed rebalanceNum);
-    event ExecuteRebalance(address indexed owner, uint indexed rebalanceNum);
+    event ConfirmRebalance(address indexed owner, uint256 indexed rebalanceNum);
+    event RevokeConfirmation(address indexed owner, uint256 indexed rebalanceNum);
+    event ExecuteRebalance(address indexed owner, uint256 indexed rebalanceNum);
+    event SubmitOperation(uint256 indexed operationNum, bytes data);
+    event ConfirmOperation(address indexed owner, uint256 indexed operationNum);
+    event RevokeOperationConfirmation(address indexed owner, uint256 indexed operationNum);
+    event ExecuteOperation(address indexed owner, uint256 indexed operationNum, bytes data);
 
     address[] public owners;
     address public operator;
     address public priorityOwner;
     mapping(address => bool) public isOwner;
-    uint public numConfirmationsRequired;
-    uint public numConfirmationsRequiredOperator;
-    uint public rebalanceNum;
+    uint256 public numConfirmationsRequired;
+    uint256 public numOperationConfirmationsRequired;
+    uint256 public rebalanceNum;
+    uint256 public operationNum;
     IICManager public manager;
 
-   struct Rebalance {
+    struct Rebalance {
         address[] newComponents;
         uint256[] newComponentsTargetUnits;
         uint256[] oldComponentsTargetUnits;
         uint256 positionMultiplier;
         bool executed;
-        uint numConfirmations;
-        uint rebalanceNum;
+        uint256 numConfirmations;
+        uint256 rebalanceNum;
     }
 
-    struct OperatorProposal{
-        address newOperator;
-        uint numConfirmations;
+    struct Operation {
+        bytes data;
+        bool executed;
+        uint256 numConfirmations;
+        uint256 operationNum;
     }
 
     // mapping from tx owner => bool
     mapping(address => bool) public rebalanceConfirmed;
-    mapping(address => bool) public operatorConfirmed;
+    mapping(address => bool) public operationConfirmed;
 
     Rebalance public currentRebalance;
-    OperatorProposal public operatorProposal;
+    Operation public currentOperation;
 
     modifier onlyOwner() {
         require(isOwner[msg.sender], "not owner");
@@ -64,22 +65,27 @@ contract MultiSigOperator {
         _;
     }
 
-    modifier notExecuted() {
+    modifier notExecutedRebalance() {
         require(!currentRebalance.executed, "rebalance already executed");
         _;
     }
 
-    modifier notConfirmed() {
+    modifier notExecutedOperation() {
+        require(!currentOperation.executed, "operation already executed");
+        _;
+    }
+
+    modifier notConfirmedRebalance() {
         require(!rebalanceConfirmed[msg.sender], "rebalance already confirmed");
         _;
     }
 
-    modifier notConfirmedOperator() {
-        require(!operatorConfirmed[msg.sender], "operator already confirmed");
+    modifier notConfirmedOperation() {
+        require(!operationConfirmed[msg.sender], "operation already confirmed");
         _;
     }
 
-    constructor(address[] memory _owners, uint _numConfirmationsRequired, uint _numConfirmationsRequiredOperator, address _operator, IICManager _manager, address _priorityOwner) public {
+    constructor(address[] memory _owners, uint256 _numConfirmationsRequired, uint256 _numOperationConfirmationsRequired, address _operator, IICManager _manager, address _priorityOwner) public {
         require(_owners.length > 0, "owners required");
         require(
             _numConfirmationsRequired > 0 &&
@@ -88,8 +94,8 @@ contract MultiSigOperator {
         );
 
         require(
-            _numConfirmationsRequiredOperator > 0 &&
-                _numConfirmationsRequiredOperator <= _owners.length,
+            _numOperationConfirmationsRequired > 0 &&
+                _numOperationConfirmationsRequired <= _owners.length,
             "invalid number of required confirmations"
         );
 
@@ -97,7 +103,7 @@ contract MultiSigOperator {
         manager = _manager;
         priorityOwner = _priorityOwner;
 
-        for (uint i = 0; i < _owners.length; i++) {
+        for (uint256 i = 0; i < _owners.length; i++) {
             address owner = _owners[i];
 
             require(owner != address(0), "invalid owner");
@@ -108,8 +114,9 @@ contract MultiSigOperator {
         }
 
         numConfirmationsRequired = _numConfirmationsRequired;
-        numConfirmationsRequiredOperator = _numConfirmationsRequiredOperator;
+        numOperationConfirmationsRequired = _numOperationConfirmationsRequired;
         rebalanceNum = 0;
+        operationNum = 0;
     }
 
     function priorityRebalance(
@@ -125,40 +132,13 @@ contract MultiSigOperator {
         emit ExecuteRebalance(msg.sender, rebalanceNum);
     }
 
-    function submitNewOperator(address _newOperator) public onlyOwner {
-        for (uint8 i = 0; i < owners.length; i++) {
-            operatorConfirmed[owners[i]] = false;
-        }
-        operatorProposal = OperatorProposal(_newOperator, 0);
-        operatorProposal.numConfirmations += 1;
-        emit SubmitNewOperator(_newOperator);
-    }
-
-    function confirmNewOperator() public onlyOwner notConfirmedOperator {
-        operatorProposal.numConfirmations += 1;
-        operatorConfirmed[msg.sender] = true;
-        emit ConfirmNewOperator(msg.sender, operatorProposal.newOperator);
-    }
-
-    function executeNewOperator() public onlyOwner {
-        require(
-            operatorProposal.numConfirmations >= numConfirmationsRequiredOperator,
-            "cannot execute new operator"
-        );
-
-        operator = operatorProposal.newOperator;
-        emit NewOperator(operator);
-        manager.updateOperator(operator);
-
-    }
-
     function submitRebalance(
         address[] calldata _newComponents,
         uint256[] calldata _newComponentsTargetUnits,
         uint256[] calldata _oldComponentsTargetUnits,
         uint256 _positionMultiplier
     ) public onlyOperator {
-        for (uint8 i = 0; i < owners.length; i++) {
+        for (uint256 i = 0; i < owners.length; i++) {
             rebalanceConfirmed[owners[i]] = false;
         }
         currentRebalance = Rebalance(_newComponents, _newComponentsTargetUnits, _oldComponentsTargetUnits, _positionMultiplier, false, 0, rebalanceNum);
@@ -168,13 +148,13 @@ contract MultiSigOperator {
         emit SubmitRebalance(rebalanceNum, _newComponents, _newComponentsTargetUnits, _oldComponentsTargetUnits, _positionMultiplier);
     }
 
-    function confirmRebalance() public onlyOwner notExecuted() notConfirmed() {
+    function confirmRebalance() public onlyOwner notExecutedRebalance notConfirmedRebalance {
         currentRebalance.numConfirmations += 1;
         rebalanceConfirmed[msg.sender] = true;
         emit ConfirmRebalance(msg.sender, rebalanceNum);
     }
 
-    function executeRebalance() public onlyOwner notExecuted() {
+    function executeRebalance() public onlyOwner notExecutedRebalance {
 
         require(
             currentRebalance.numConfirmations >= numConfirmationsRequired,
@@ -188,7 +168,7 @@ contract MultiSigOperator {
         emit ExecuteRebalance(msg.sender, rebalanceNum);
     }
 
-    function revokeConfirmation() public onlyOwner notExecuted() {
+    function revokeConfirmationRebalance() public onlyOwner notExecutedRebalance {
 
         require(rebalanceConfirmed[msg.sender], "rebalance not confirmed");
 
@@ -198,15 +178,57 @@ contract MultiSigOperator {
         emit RevokeConfirmation(msg.sender, rebalanceNum);
     }
 
+    function submitOperation(bytes calldata data) public onlyOperator {
+        for (uint256 i = 0; i < owners.length; i++) {
+            operationConfirmed[owners[i]] = false;
+        }
+        currentOperation = Operation(data, false, 0, operationNum);
+
+        operationNum += 1;
+
+        emit SubmitOperation(operationNum, data);
+    }
+
+    function confirmOperation() public onlyOwner notExecutedOperation notConfirmedOperation {
+        currentOperation.numConfirmations += 1;
+        operationConfirmed[msg.sender] = true;
+        emit ConfirmOperation(msg.sender, operationNum);
+    }
+
+    function executeOperation() public onlyOwner notExecutedOperation {
+
+        require(
+            currentOperation.numConfirmations >= numOperationConfirmationsRequired,
+            "cannot execute operation"
+        );
+
+        currentOperation.executed = true;
+
+        (bool success, ) = address(manager).call(currentOperation.data);
+        require(success, "call to manager failed");
+
+        emit ExecuteOperation(msg.sender, operationNum, currentOperation.data);
+    }
+
+    function revokeConfirmationOperation() public onlyOwner notExecutedOperation {
+
+        require(operationConfirmed[msg.sender], "operation not confirmed");
+
+        currentOperation.numConfirmations -= 1;
+        operationConfirmed[msg.sender] = false;
+
+        emit RevokeOperationConfirmation(msg.sender, operationNum);
+    }
+
     function getOwners() public view returns (address[] memory) {
         return owners;
     }
 
-    function getRebalance() public view returns (address[] memory, uint256[] memory, uint256[] memory, uint256, bool, uint, uint) {
+    function getRebalance() public view returns (address[] memory, uint256[] memory, uint256[] memory, uint256, bool, uint256, uint256) {
         return (currentRebalance.newComponents, currentRebalance.newComponentsTargetUnits, currentRebalance.oldComponentsTargetUnits, currentRebalance.positionMultiplier, currentRebalance.executed, currentRebalance.numConfirmations, currentRebalance.rebalanceNum);
     }
 
-    function getOperatorProposal() public view returns (address, uint) {
-        return (operatorProposal.newOperator, operatorProposal.numConfirmations);
+    function getOperation() public view returns (bytes memory, bool, uint256, uint256) {
+        return (currentOperation.data, currentOperation.executed, currentOperation.numConfirmations, currentOperation.operationNum);
     }
 }

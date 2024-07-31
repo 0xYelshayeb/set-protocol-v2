@@ -1,7 +1,8 @@
 import "module-alias/register";
 
 import {
-  getSystemFixtureDeploy,
+  // getSystemFixtureDeploy,
+  getSystemFixtureDeployReduced
 } from "@utils/test/index";
 
 import DeployHelper from "@utils/deploys";
@@ -19,7 +20,7 @@ async function main() {
 
   const deployer = new DeployHelper(manager);
 
-  const setup = getSystemFixtureDeploy(manager.address);
+  const setup = getSystemFixtureDeployReduced(manager.address);
 
   await setup.initialize();
 
@@ -112,15 +113,6 @@ async function main() {
     setup.components.map(() => uniAdapterName)
   );
 
-  const exchangeData = await uniAdapter.getEncodedFeeData(500);
-
-  indexModule = indexModule.connect(manager);
-  await indexModule.setExchangeData(
-    setToken.address,
-    setup.components.map(component => component.address),
-    setup.components.map(() => exchangeData)
-  );
-
   // set trade maximums to max for all components
   indexModule = indexModule.connect(manager);
   await indexModule.setTradeMaximums(
@@ -144,7 +136,7 @@ async function main() {
 
   // Deploy MultiSigOperator
   const MultiSigOperator = await hre.ethers.getContractFactory("MultiSigOperator");
-  const MultiSigInstance = await MultiSigOperator.deploy(
+  let MultiSigInstance = await MultiSigOperator.deploy(
     [
       manager.address,
       "0xC46d6ef4136c26B1852065a4059Bde62071E8B1a",
@@ -162,6 +154,31 @@ async function main() {
   // Update Operator
   icManagerInstance = icManagerInstance.connect(manager);
   await icManagerInstance.updateOperator(MultiSigInstance.address);
+
+  const exchangeData = await uniAdapter.getEncodedFeeData(500);
+
+  // icManagerInstance = icManagerInstance.connect(manager);
+  // await icManagerInstance.updateExchangeData(
+  //   setup.components.map(component => component.address),
+  //   setup.components.map(() => exchangeData)
+  // );
+
+
+  console.log("Setting Asset Exchange Data...");
+  const data = ICManager.interface.encodeFunctionData("updateExchangeData",
+    [
+      setup.components.map(component => component.address),
+      setup.components.map(() => exchangeData)
+    ]
+  );
+
+  MultiSigInstance = MultiSigInstance.connect(manager);
+  await MultiSigInstance.submitOperation(data);
+  console.log("Submitted operation");
+  await MultiSigInstance.confirmOperation();
+  console.log("Confirmed operation");
+  await MultiSigInstance.executeOperation();
+  console.log("Executed operation");
 
   await preNavIssuanceHook.setNavIssuanceModule(setup.navIssuanceModule.address);
   await preNavIssuanceHook.setMultiSigOperator(MultiSigInstance.address);

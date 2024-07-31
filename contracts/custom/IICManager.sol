@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache License, Version 2.0
 pragma solidity ^0.6.10;
+pragma experimental ABIEncoderV2;
 
 interface IICManager {
     /**
@@ -33,4 +34,6 @@ interface IICManager {
      * @param _newMethodologist           New methodologist address
      */
     function updateMethodologist(address _newMethodologist) external;
+
+    function updateExchangeData(address[] memory _components, bytes[] memory _exchangeData) external;
 }

@@ -55,8 +55,8 @@ const config: HardhatUserConfig = {
       url: "http://127.0.0.1:7545",
       forking: (process.env.FORK) ? forkingConfig : undefined,
       timeout: 200000,
-      gas: 12000000,
-      blockGasLimit: 120000000
+      gas: 120000000,
+      blockGasLimit: 1200000000
     },
     kovan: {
       url: "https://kovan.infura.io/v3/" + process.env.INFURA_TOKEN,

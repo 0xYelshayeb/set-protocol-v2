@@ -27,8 +27,6 @@ import { IOracle } from "../interfaces/IOracle.sol";
 import { IOracleAdapter } from "../interfaces/IOracleAdapter.sol";
 import { PreciseUnitMath } from "../lib/PreciseUnitMath.sol";
 
-import "hardhat/console.sol";
-
 
 /**
  * @title PriceOracle

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache License, Version 2.0
 pragma solidity ^0.6.10;
+pragma experimental ABIEncoderV2;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { ISetToken } from "../interfaces/ISetToken.sol";
@@ -126,6 +127,22 @@ contract ICManager is TimeLockUpgrade, MutualUpgrade {
         onlyOperator
     {
         indexModule.setTradeMaximums(setToken, _components, _tradeMaximums);
+    }
+
+    /**
+     * OPERATOR ONLY: Set trade maximums for passed components
+     *
+     * @param _components           Array of components
+     * @param _exchangeData         Array of exchange specific arbitrary bytes data
+     */
+    function updateExchangeData(
+        address[] memory _components,
+        bytes[] memory _exchangeData
+    )
+        external
+        onlyOperator
+    {
+        indexModule.setExchangeData(setToken, _components, _exchangeData);
     }
 
     /**

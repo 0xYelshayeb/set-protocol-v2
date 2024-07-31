@@ -110,37 +110,49 @@ export class SystemFixtureDeploy {
 
   public async initializeStandardComponents(): Promise<void> {
 
-    console.log("Deploying Mock Tokens...");
-
-    // create 10 tokens and approve them for issuanceModule
-
-    for (let i = 0; i < 10; i++) {
-      const token = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(10000), 18, `token${i}`, `TOKEN${i}`);
-      await token.approve(this.issuanceModule.address, ether(10000));
-      this.components.push(token);
-    }
-
-    console.log("Mock Tokens deployed");
-
-    this.weth = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(50000), 18, "weth", "WETH");
+    const wethAddress = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1";
+    this.weth = ERC20__factory.connect(wethAddress, this._ownerSigner);
     await this.weth.approve(this.issuanceModule.address, ether(10000));
 
-    console.log("Approved tokens for issuanceModule");
+    const componentData = [
+      ["0xfa7f8980b0f1e64a2062791cc3b0871572f1f7f0", 3000],
+      ["0x9623063377ad1b27544c965ccd7342f7ea7e88c7", 3000],
+      ["0x13ad51ed4f1b7e9dc168d8a00cb3f4ddd85efa60", 3000],
+      ["0x0c880f6761f1af8d9aa9c466984b80dab9a8c9e8", 3000],
+      ["0x912ce59144191c1204e64559fe8253a0e49e6548", 500],
+      ["0xfc5a1a6eb076a2c7ad06ed22c90d7e710e35ad0a", 10000],
+      ["0x371c7ec6d8039ff7933a2aa28eb827ffe1f52f07", 10000],
+      ["0x18c11fd286c5ec11c3b683caa813b77f5163a122", 3000],
+      ["0x3082cc23568ea640225c2467653db90e9250aaa0", 3000],
+      ["0x4e352cf164e64adcbad318c3a1e222e9eba4ce42", 10000],
+      ["0x7dd747d63b094971e6638313a6a2685e80c7fb2e", 3000],
+      ["0x0341c0c0ec423328621788d4854119b97f44e391", 10000],
+      ["0x58b9cb810a68a7f3e1e4f8cb45d1b9b3c79705e8", 10000],
+      ["0xf1264873436a0771e440e2b28072fafcc5eebd01", 100],
+    ];
+
+    this.components = componentData.map(data => ERC20__factory.connect(data[0].toString(), this._ownerSigner));
 
     this.uniswapFactoryAddress = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
     this.uniswapRouterAddress = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
     this.uniswapNonFungiblePositionManagerAddress = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88";
 
+    const factoryContract = new ethers.Contract(
+      this.uniswapFactoryAddress,
+      [
+        "function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool)",
+        "function createPool(address tokenA, address tokenB, uint24 fee) external returns (address pool)"
+      ],
+      this._ownerSigner
+    );
+
     for (let i = 0; i < 10; i++) {
-      const poolAddress = await this.createUniswapPoolAndAddLiquidity(
-        this._ownerSigner,
-        this.uniswapFactoryAddress,
-        this.uniswapNonFungiblePositionManagerAddress,
-        this.components[i].address,
-        this.weth.address,
-      );
-      this.poolAddresses.push(poolAddress.poolAddress);
+      await this.components[i].approve(this.issuanceModule.address, ether(10000));
+      const poolAddress = await factoryContract.getPool(componentData[i][0], this.weth.address, componentData[i][1]);
+      this.poolAddresses.push(poolAddress);
     }
+
+    console.log(this.poolAddresses);
   }
 
   public async createSetToken(
@@ -163,112 +175,5 @@ export class SystemFixtureDeploy {
     const retrievedSetAddress = await new ProtocolUtils(this._provider).getCreatedSetTokenAddress(txHash.hash);
 
     return new SetToken__factory(this._ownerSigner).attach(retrievedSetAddress);
-  }
-
-  public async createUniswapPoolAndAddLiquidity(
-    signer: Signer,
-    factoryAddress: Address,
-    routerAddress: Address,
-    tokenAAddress: Address,
-    tokenBAddress: Address,
-  ) {
-
-    // sort addresses to create deterministic pair
-    if (tokenAAddress.toLowerCase() > tokenBAddress.toLowerCase()) {
-      const tempAddress = tokenAAddress;
-      tokenAAddress = tokenBAddress;
-      tokenBAddress = tempAddress;
-    }
-
-    console.log(`Creating pool for tokens: ${tokenAAddress} and ${tokenBAddress}`);
-
-    // Connect to Uniswap Factory and Router contracts
-    const factoryContract = new ethers.Contract(
-      factoryAddress,
-      [
-        "function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool)",
-        "function createPool(address tokenA, address tokenB, uint24 fee) external returns (address pool)"
-      ],
-      signer
-    );
-
-    // Connect to ERC20 token contracts
-    const TokenA = ERC20__factory.connect(tokenAAddress, signer);
-    const TokenB = ERC20__factory.connect(tokenBAddress, signer);
-
-    // Approve the router to spend tokens
-    const approve1 = await TokenA.approve(routerAddress, ether(10000));
-    const approve2 = await TokenB.approve(routerAddress, ether(10000));
-
-    await approve1.wait();
-    await approve2.wait();
-
-    const Router = new ethers.Contract(
-      routerAddress,
-      [
-        "function createAndInitializePoolIfNecessary(address token0, address token1, uint24 fee, uint160 sqrtPriceX96) external",
-        `function mint(
-          (
-            address token0,
-            address token1,
-            uint24 fee,
-            int24 tickLower,
-            int24 tickUpper,
-            uint256 amount0Desired,
-            uint256 amount1Desired,
-            uint256 amount0Min,
-            uint256 amount1Min,
-            address recipient,
-            uint256 deadline
-          )
-        ) external returns (
-          uint256 tokenId,
-          uint128 liquidity,
-          uint256 amount0,
-          uint256 amount1
-        )`
-      ],
-      signer
-    );
-
-    const tx2 = await Router.createAndInitializePoolIfNecessary(
-      tokenAAddress,
-      tokenBAddress,
-      500,
-      BigNumber.from("79228162514264337593543950336"),
-    );
-
-    await tx2.wait();
-
-    // Add liquidity
-    const params = {
-      token0: tokenAAddress,
-      token1: tokenBAddress,
-      fee: 500,
-      tickLower: -60,
-      tickUpper: 60,
-      amount0Desired: ether(1000),
-      amount1Desired: ether(1000),
-      amount0Min: ether(800),
-      amount1Min: ether(800),
-      recipient: await signer.getAddress(),
-      deadline: Math.floor(Date.now() / 1000) + 86400000
-    };
-
-    const txOptions = {
-      gasLimit: ethers.BigNumber.from("2000000"),
-      value: ether(0)
-    };
-
-    console.log("Adding liquidity");
-
-    const tx = await Router.mint(params, txOptions);
-
-    await tx.wait();
-
-    const poolAddress = await factoryContract.getPool(tokenAAddress, tokenBAddress, 500);
-    console.log(poolAddress);
-
-    return { poolAddress: poolAddress };
   }
 }

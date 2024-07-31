@@ -36,8 +36,6 @@ import { Position } from "../../lib/Position.sol";
 import { PreciseUnitMath } from "../../../lib/PreciseUnitMath.sol";
 import { Uint256ArrayUtils } from "../../../lib/Uint256ArrayUtils.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title GeneralIndexModule
  * @author Set Protocol

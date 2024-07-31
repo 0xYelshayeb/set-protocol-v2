@@ -1,20 +1,17 @@
-import { providers } from "ethers";
+import { ethers, providers, Contract } from "ethers";
 import { ContractTransaction, Signer } from "ethers";
 import { BigNumber } from "ethers";
+import hre from "hardhat";
 
 import {
   BasicIssuanceModule,
   Controller,
   IntegrationRegistry,
-  OracleMock,
   PriceOracle,
   SetToken,
   SetTokenCreator,
   SetValuer,
-  StandardTokenMock,
-  StreamingFeeModule,
-  WETH9,
-  CustomOracleNavIssuanceModule
+  CustomOracleNavIssuanceModule,
 } from "../contracts";
 import DeployHelper from "../deploys";
 import {
@@ -26,14 +23,17 @@ import {
 } from "../types";
 
 import { SetToken__factory } from "../../typechain/factories/SetToken__factory";
+import { MAX_UINT_256 } from "@utils/constants";
+// Import TypeChain-generated factories
+import { ERC20__factory } from "@typechain/index";
+import { ERC20 } from "@typechain/index";
+
 
 export class SystemFixtureDeployReduced {
   private _provider: providers.Web3Provider | providers.JsonRpcProvider;
   private _ownerAddress: Address;
   private _ownerSigner: Signer;
   private _deployer: DeployHelper;
-
-  public feeRecipient: Address;
 
   public controller: Controller;
   public factory: SetTokenCreator;
@@ -42,13 +42,19 @@ export class SystemFixtureDeployReduced {
   public setValuer: SetValuer;
 
   public issuanceModule: BasicIssuanceModule;
-  public streamingFeeModule: StreamingFeeModule;
   public navIssuanceModule: CustomOracleNavIssuanceModule;
+  public uniswapFactoryAddress: Address;
+  public uniswapRouterAddress: Address;
+  public uniswapNonFungiblePositionManagerAddress: Address;
 
-  public weth: WETH9;
+  public uni: ERC20;
+  public aave: ERC20;
+  public weth: ERC20;
 
-  public components: StandardTokenMock[] = [];
-  public oracles: OracleMock[] = [];
+  public components: ERC20[] = [];
+
+  public poolAddresses: Address[] = [];
+  public uniswapPriceAdapter: Contract;
 
   constructor(provider: providers.Web3Provider | providers.JsonRpcProvider, ownerAddress: Address) {
     this._provider = provider;
@@ -59,56 +65,82 @@ export class SystemFixtureDeployReduced {
 
   public async initialize(): Promise<void> {
 
-    // Choose an arbitrary address as fee recipient
-    this.feeRecipient = "0x60E9eD31b7A5a5270e370d8f8979d33780E9E2d0";
+    console.log("SystemFixtureDeploy initializing");
 
-    this.controller = await this._deployer.core.deployController(this.feeRecipient);
+    this.controller = await this._deployer.core.deployController(this._ownerAddress);
+
     this.issuanceModule = await this._deployer.modules.deployBasicIssuanceModule(this.controller.address);
 
     await this.initializeStandardComponents();
 
     this.factory = await this._deployer.core.deploySetTokenCreator(this.controller.address);
+
+    console.log("Deploying UniswapPriceAdapter...");
+
+    const UniswapV3PriceAdapterFactory = await hre.ethers.getContractFactory("UniswapV3PairPriceAdapter");
+    this.uniswapPriceAdapter = await UniswapV3PriceAdapterFactory.deploy(this.poolAddresses);
+    await this.uniswapPriceAdapter.deployed();
+
+    console.log("Deploying PriceOracle...");
+
     this.priceOracle = await this._deployer.core.deployPriceOracle(
       this.controller.address,
       this.weth.address,
+      [this.uniswapPriceAdapter.address],
       [],
-      this.components.map(component => component.address).concat(this.weth.address),
-      this.components.map(() => this.weth.address).concat(this.weth.address),
-      this.oracles.map(oracle => oracle.address),
+      [],
+      [],
     );
 
     this.integrationRegistry = await this._deployer.core.deployIntegrationRegistry(this.controller.address);
 
     this.setValuer = await this._deployer.core.deploySetValuer(this.controller.address);
-    this.streamingFeeModule = await this._deployer.modules.deployStreamingFeeModule(this.controller.address);
     this.navIssuanceModule = await this._deployer.modules.deployCustomOracleNavIssuanceModule(this.controller.address, this.weth.address);
+    await this.weth.approve(this.navIssuanceModule.address, MAX_UINT_256);
 
     await this.controller.initialize(
       [this.factory.address], // Factories
-      [this.issuanceModule.address, this.streamingFeeModule.address, this.navIssuanceModule.address], // Modules
+      [this.issuanceModule.address, this.navIssuanceModule.address], // Modules
       [this.integrationRegistry.address, this.priceOracle.address, this.setValuer.address], // Resources
       [0, 1, 2]  // Resource IDs where IntegrationRegistry is 0, PriceOracle is 1, SetValuer is 2
     );
+
+    console.log("SystemFixtureDeploy initialized");
   }
 
   public async initializeStandardComponents(): Promise<void> {
-    this.weth = await this._deployer.external.deployWETH();
 
-    console.log("Deployed weth...");
+    console.log("Deploying Mock Tokens...");
 
-    for (let i = 0; i < 1; i++) {
-      this.components.push(await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(10000), 18));
-      await this.components[i].approve(this.issuanceModule.address, ether(10000));
-      console.log("Deployed component " + i + "...");
-    }
+    // create  tokens and approve them for issuanceModule
 
     for (let i = 0; i < 1; i++) {
-      this.oracles.push(await this._deployer.mocks.deployOracleMock(ether((i/5) + 1).div(2)));
-      console.log("Deployed oracle " + i + "...");
+      const token = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(10000), 18, `token${i}`, `TOKEN${i}`);
+      await token.approve(this.issuanceModule.address, ether(10000));
+      this.components.push(token);
     }
 
-    this.oracles.push(await this._deployer.mocks.deployOracleMock(ether(1)));
+    console.log("Mock Tokens deployed");
 
+    this.weth = await this._deployer.mocks.deployTokenMock(this._ownerAddress, ether(50000), 18, "weth", "WETH");
+    await this.weth.approve(this.issuanceModule.address, ether(10000));
+
+    console.log("Approved tokens for issuanceModule");
+
+    this.uniswapFactoryAddress = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
+    this.uniswapRouterAddress = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
+    this.uniswapNonFungiblePositionManagerAddress = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88";
+
+    for (let i = 0; i < 1; i++) {
+      const poolAddress = await this.createUniswapPoolAndAddLiquidity(
+        this._ownerSigner,
+        this.uniswapFactoryAddress,
+        this.uniswapNonFungiblePositionManagerAddress,
+        this.components[i].address,
+        this.weth.address,
+      );
+      this.poolAddresses.push(poolAddress.poolAddress);
+    }
   }
 
   public async createSetToken(
@@ -131,5 +163,112 @@ export class SystemFixtureDeployReduced {
     const retrievedSetAddress = await new ProtocolUtils(this._provider).getCreatedSetTokenAddress(txHash.hash);
 
     return new SetToken__factory(this._ownerSigner).attach(retrievedSetAddress);
+  }
+
+  public async createUniswapPoolAndAddLiquidity(
+    signer: Signer,
+    factoryAddress: Address,
+    routerAddress: Address,
+    tokenAAddress: Address,
+    tokenBAddress: Address,
+  ) {
+
+    // sort addresses to create deterministic pair
+    if (tokenAAddress.toLowerCase() > tokenBAddress.toLowerCase()) {
+      const tempAddress = tokenAAddress;
+      tokenAAddress = tokenBAddress;
+      tokenBAddress = tempAddress;
+    }
+
+    console.log(`Creating pool for tokens: ${tokenAAddress} and ${tokenBAddress}`);
+
+    // Connect to Uniswap Factory and Router contracts
+    const factoryContract = new ethers.Contract(
+      factoryAddress,
+      [
+        "function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool)",
+        "function createPool(address tokenA, address tokenB, uint24 fee) external returns (address pool)"
+      ],
+      signer
+    );
+
+    // Connect to ERC20 token contracts
+    const TokenA = ERC20__factory.connect(tokenAAddress, signer);
+    const TokenB = ERC20__factory.connect(tokenBAddress, signer);
+
+    // Approve the router to spend tokens
+    const approve1 = await TokenA.approve(routerAddress, ether(10000));
+    const approve2 = await TokenB.approve(routerAddress, ether(10000));
+
+    await approve1.wait();
+    await approve2.wait();
+
+    const Router = new ethers.Contract(
+      routerAddress,
+      [
+        "function createAndInitializePoolIfNecessary(address token0, address token1, uint24 fee, uint160 sqrtPriceX96) external",
+        `function mint(
+          (
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickLower,
+            int24 tickUpper,
+            uint256 amount0Desired,
+            uint256 amount1Desired,
+            uint256 amount0Min,
+            uint256 amount1Min,
+            address recipient,
+            uint256 deadline
+          )
+        ) external returns (
+          uint256 tokenId,
+          uint128 liquidity,
+          uint256 amount0,
+          uint256 amount1
+        )`
+      ],
+      signer
+    );
+
+    const tx2 = await Router.createAndInitializePoolIfNecessary(
+      tokenAAddress,
+      tokenBAddress,
+      500,
+      BigNumber.from("79228162514264337593543950336"),
+    );
+
+    await tx2.wait();
+
+    // Add liquidity
+    const params = {
+      token0: tokenAAddress,
+      token1: tokenBAddress,
+      fee: 500,
+      tickLower: -60,
+      tickUpper: 60,
+      amount0Desired: ether(1000),
+      amount1Desired: ether(1000),
+      amount0Min: ether(800),
+      amount1Min: ether(800),
+      recipient: await signer.getAddress(),
+      deadline: Math.floor(Date.now() / 1000) + 86400000
+    };
+
+    const txOptions = {
+      gasLimit: ethers.BigNumber.from("2000000"),
+      value: ether(0)
+    };
+
+    console.log("Adding liquidity");
+
+    const tx = await Router.mint(params, txOptions);
+
+    await tx.wait();
+
+    const poolAddress = await factoryContract.getPool(tokenAAddress, tokenBAddress, 500);
+    console.log(poolAddress);
+
+    return { poolAddress: poolAddress };
   }
 }

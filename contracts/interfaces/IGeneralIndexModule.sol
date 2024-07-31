@@ -25,6 +25,12 @@ interface IGeneralIndexModule {
         uint256[] calldata _exchanges
     ) external;
 
+    function setExchangeData(
+        ISetToken _setToken,
+        address[] memory _components,
+        bytes[] memory _exchangeData
+    ) external;
+
     function setCoolOffPeriods(
         ISetToken _setToken,
         address[] calldata _components,
